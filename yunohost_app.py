@@ -832,6 +832,7 @@ def app_ssowatconf():
 
     skipped_urls = []
     unprotected_urls = []
+    protected_urls = []
     apps = {}
     for app in app_list()['Apps']:
         if _is_installed(app['ID']):
@@ -847,6 +848,11 @@ def app_ssowatconf():
                         if item[-1:] == '/':
                             item = item[:-1]
                         unprotected_urls.append(app_settings['domain'] + app_settings['path'][:-1] + item)
+                if 'protected_uris' in app_settings:
+                    for item in app_settings['protected_uris'].split(','):
+                        if item[-1:] == '/':
+                            item = item[:-1]
+                        protected_urls.append(app_settings['domain'] + app_settings['path'][:-1] + item)
 
     for domain in domains:
         skipped_urls.extend([domain +'/yunohost/admin', domain +'/yunohost/api'])
@@ -865,6 +871,7 @@ def app_ssowatconf():
         'domains': domains,
         'skipped_urls': skipped_urls,
         'unprotected_urls': unprotected_urls,
+        'protected_urls': protected_urls,
         'users': users
     }
 
