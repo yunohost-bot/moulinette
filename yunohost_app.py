@@ -853,7 +853,7 @@ def app_ssowatconf():
 
     conf_dict = {
         'portal_domain': main_domain,
-        'portal_path': '/ynhsso/',
+        'portal_path': '/yunohost/sso/',
         'portal_port': '443',
         'portal_scheme': 'https',
         'additional_headers': {
