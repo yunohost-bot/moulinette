@@ -143,7 +143,7 @@ def firewall_reload(upnp=False):
         add_portmapping('TCP', upnp, True, 'r')
         add_portmapping('UDP', upnp, True, 'r')
         ipv6 = True
-    
+
     hook_callback('post_iptable_rules', [upnp, ipv6])
 
     os.system("iptables -A INPUT -i lo -j ACCEPT")
@@ -152,7 +152,7 @@ def firewall_reload(upnp=False):
 
     if os.path.exists("/proc/net/if_inet6"):
         os.system("ip6tables -A INPUT -i lo -j ACCEPT")
-        os.system("ip6tables -A INPUT -p icmp -j ACCEPT")
+        os.system("ip6tables -A INPUT -p icmpv6 -j ACCEPT")
         os.system("ip6tables -P INPUT DROP")
 
     os.system("service fail2ban restart")
