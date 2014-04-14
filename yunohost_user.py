@@ -143,15 +143,20 @@ def user_create(username, firstname, lastname, mail, password):
         }
 
         if yldap.add(rdn, attr_dict):
-            os.system("su - " + username + " -c ''")
-            os.system('yunohost app ssowatconf > /dev/null 2>&1')
-            #TODO: Send a welcome mail to user
-            win_msg(_("User successfully created"))
-            hook_callback('post_user_create', [username, mail, password, firstname, lastname])
+            # Update SFTP user group
+            memberlist = yldap.search(filter='cn=sftpusers', attrs=['memberUid'])[0]['memberUid']
+            memberlist.append(username)
+            if yldap.update('cn=sftpusers,ou=groups', { 'memberUid': memberlist }):
+		# Create /home/user directory and reload SSOwat configuration
+                os.system("su - " + username + " -c ''")
+                os.system('yunohost app ssowatconf > /dev/null 2>&1')
+                #TODO: Send a welcome mail to user
+                win_msg(_("User successfully created"))
+                hook_callback('post_user_create', [username, mail, password, firstname, lastname])
 
-            return { _("Fullname") : fullname, _("Username") : username, _("Mail") : mail }
-        else:
-            raise YunoHostError(169, _("An error occured during user creation"))
+                return { _("Fullname") : fullname, _("Username") : username, _("Mail") : mail }
+
+        raise YunoHostError(169, _("An error occured during user creation"))
 
 
 def user_delete(users, purge=False):
@@ -171,10 +176,15 @@ def user_delete(users, purge=False):
 
         for user in users:
             if yldap.remove('uid=' + user+ ',ou=users'):
-                if purge:
-                    os.system('rm -rf /home/' + user)
-                result['Users'].append(user)
-                continue
+                # Update SFTP user group
+                memberlist = yldap.search(filter='cn=sftpusers', attrs=['memberUid'])[0]['memberUid']
+                try: memberlist.remove(user)
+                except: pass
+                if yldap.update('cn=sftpusers,ou=groups', { 'memberUid': memberlist }):
+                    if purge:
+                        os.system('rm -rf /home/' + user)
+                    result['Users'].append(user)
+                    continue
             else:
                 raise YunoHostError(169, _("An error occured during user deletion"))
 
