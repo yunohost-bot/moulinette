@@ -415,6 +415,7 @@ app:
                 -d:
                     full: --domain
                     help: Specific domain to put app on (the app domain by default)
+                    pattern: '^([a-zA-Z0-9]{1}([a-zA-Z0-9\-]*[a-zA-Z0-9])*)(\.[a-zA-Z0-9]{1}([a-zA-Z0-9\-]*[a-zA-Z0-9])*)*(\.[a-zA-Z]{1}([a-zA-Z0-9\-]*[a-zA-Z0-9])*)$'
 
         ### app_ssowatconf()
         ssowatconf:
