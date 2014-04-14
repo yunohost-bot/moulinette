@@ -645,6 +645,46 @@ def app_clearaccess(apps):
     app_ssowatconf()
 
 
+def app_makedefault(app, domain=None):
+    """
+    Redirect domain root to an app
+
+    Keyword argument:
+        app
+        domain
+
+    """
+    if not _is_installed(app):
+        raise YunoHostError(22, _("App is not installed"))
+
+    app_domain = app_setting(app, 'domain')
+    app_path   = app_setting(app, 'path')
+
+    if domain is None:
+        domain = app_domain
+    elif domain not in domain_list()['Domains']:
+        raise YunoHostError(22, _("Domain doesn't exists"))
+
+    if '/' in app_map(raw=True)[domain]:
+        raise YunoHostError(1, _("An app is already installed on this location"))
+
+    try:
+        with open('/etc/ssowat/conf.json.persistent') as json_conf:
+            ssowat_conf = json.loads(str(json_conf.read()))
+    except IOError:
+        ssowat_conf = {}
+
+    if 'redirected_urls' not in ssowat_conf:
+        ssowat_conf['redirected_urls'] = {}
+
+    ssowat_conf['redirected_urls'][domain +'/'] = app_domain + app_path
+
+    with open('/etc/ssowat/conf.json.persistent', 'w+') as f:
+        json.dump(ssowat_conf, f, sort_keys=True, indent=4)
+
+    win_msg('SSOwat persistent configuration has been updated')
+
+
 def app_setting(app, key, value=None, delete=False):
     """
     Set or get an app setting value
@@ -875,8 +915,8 @@ def app_ssowatconf():
         'users': users
     }
 
-    with open('/etc/ssowat/conf.json', 'wb') as f:
-        json.dump(conf_dict, f)
+    with open('/etc/ssowat/conf.json', 'w+') as f:
+        json.dump(conf_dict, f, sort_keys=True, indent=4)
 
     win_msg(_('SSOwat configuration generated'))
 
