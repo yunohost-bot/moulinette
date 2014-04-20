@@ -117,7 +117,7 @@ def user_create(username, firstname, lastname, mail, password):
             uid = str(random.randint(200, 99999))
             uid_check = os.system("getent passwd " + uid)
             gid_check = os.system("getent group " + uid)
- 
+
         # Adapt values for LDAP
         fullname = firstname + ' ' + lastname
         rdn = 'uid=' + username + ',ou=users'
@@ -139,19 +139,49 @@ def user_create(username, firstname, lastname, mail, password):
             'uidNumber'     : uid,
             'homeDirectory' : '/home/' + username,
             'loginShell'    : '/bin/false'
- 
+
         }
 
-        if yldap.add(rdn, attr_dict):
-            os.system("su - " + username + " -c ''")
-            os.system('yunohost app ssowatconf > /dev/null 2>&1')
-            #TODO: Send a welcome mail to user
-            win_msg(_("User successfully created"))
-            hook_callback('post_user_create', [username, mail, password, firstname, lastname])
+        # If it is the first user, add some aliases
+        if not yldap.search(base='ou=users,dc=yunohost,dc=org'):
+            with open('/etc/yunohost/current_host') as f:
+                main_domain = f.readline().rstrip()
+            aliases = [
+                'root@'+ main_domain,
+                'admin@'+ main_domain,
+                'webmaster@'+ main_domain,
+                'postmaster@'+ main_domain,
+            ]
+            attr_dict['mail'] = [ attr_dict['mail'] ] + aliases
 
-            return { _("Fullname") : fullname, _("Username") : username, _("Mail") : mail }
-        else:
-            raise YunoHostError(169, _("An error occured during user creation"))
+            # If exists, remove the redirection from the SSO
+            try:
+                with open('/etc/ssowat/conf.json.persistent') as json_conf:
+                    ssowat_conf = json.loads(str(json_conf.read()))
+
+                if 'redirect_urls' in ssowat_conf and '/' in ssowat_conf['redirect_urls']:
+                    del ssowat_conf['redirect_urls']['/']
+
+                with open('/etc/ssowat/conf.json.persistent', 'w+') as f:
+                    json.dump(ssowat_conf, f, sort_keys=True, indent=4)
+
+            except IOError: pass
+
+        if yldap.add(rdn, attr_dict):
+            # Update SFTP user group
+            memberlist = yldap.search(filter='cn=sftpusers', attrs=['memberUid'])[0]['memberUid']
+            memberlist.append(username)
+            if yldap.update('cn=sftpusers,ou=groups', { 'memberUid': memberlist }):
+		# Create /home/user directory and reload SSOwat configuration
+                os.system("su - " + username + " -c ''")
+                os.system('yunohost app ssowatconf > /dev/null 2>&1')
+                #TODO: Send a welcome mail to user
+                win_msg(_("User successfully created"))
+                hook_callback('post_user_create', [username, mail, password, firstname, lastname])
+
+                return { _("Fullname") : fullname, _("Username") : username, _("Mail") : mail }
+
+        raise YunoHostError(169, _("An error occured during user creation"))
 
 
 def user_delete(users, purge=False):
@@ -171,10 +201,15 @@ def user_delete(users, purge=False):
 
         for user in users:
             if yldap.remove('uid=' + user+ ',ou=users'):
-                if purge:
-                    os.system('rm -rf /home/' + user)
-                result['Users'].append(user)
-                continue
+                # Update SFTP user group
+                memberlist = yldap.search(filter='cn=sftpusers', attrs=['memberUid'])[0]['memberUid']
+                try: memberlist.remove(user)
+                except: pass
+                if yldap.update('cn=sftpusers,ou=groups', { 'memberUid': memberlist }):
+                    if purge:
+                        os.system('rm -rf /home/' + user)
+                    result['Users'].append(user)
+                    continue
             else:
                 raise YunoHostError(169, _("An error occured during user deletion"))
 

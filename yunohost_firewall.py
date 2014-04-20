@@ -39,7 +39,6 @@ except ImportError:
 from yunohost import YunoHostError, win_msg
 from yunohost_hook import hook_callback
 
-
 def firewall_allow(protocol=None, port=None, ipv6=None, upnp=False):
     """
     Allow connection port/protocol

@@ -915,6 +915,9 @@ def app_ssowatconf():
         'skipped_urls': skipped_urls,
         'unprotected_urls': unprotected_urls,
         'protected_urls': protected_urls,
+        'redirected_regex': {
+            main_domain +'/yunohost[\/]?$': 'https://'+ main_domain +'/yunohost/sso/'
+        },
         'users': users
     }
 
