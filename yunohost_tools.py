@@ -238,6 +238,8 @@ def tools_postinstall(domain, password, dyndns=False):
     with open('/etc/ssowat/conf.json.persistent', 'w+') as f:
         json.dump(ssowat_conf, f, sort_keys=True, indent=4)
 
+    os.system('chmod 644 /etc/ssowat/conf.json.persistent')
+
     # Create SSL CA
     ssl_dir = '/usr/share/yunohost/yunohost-config/ssl/yunoCA'
     command_list = [

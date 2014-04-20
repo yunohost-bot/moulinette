@@ -685,6 +685,8 @@ def app_makedefault(app, domain=None):
     with open('/etc/ssowat/conf.json.persistent', 'w+') as f:
         json.dump(ssowat_conf, f, sort_keys=True, indent=4)
 
+    os.system('chmod 644 /etc/ssowat/conf.json.persistent')
+
     win_msg('SSOwat persistent configuration has been updated')
 
 
