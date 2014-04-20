@@ -30,6 +30,7 @@ import crypt
 import random
 import string
 import getpass
+import json
 from yunohost import YunoHostError, YunoHostLDAP, win_msg, colorize, validate, get_required_args
 from yunohost_domain import domain_list
 from yunohost_hook import hook_callback
@@ -143,7 +144,7 @@ def user_create(username, firstname, lastname, mail, password):
         }
 
         # If it is the first user, add some aliases
-        if not yldap.search(base='ou=users,dc=yunohost,dc=org'):
+        if not yldap.search(base='ou=users,dc=yunohost,dc=org', filter='uid=*'):
             with open('/etc/yunohost/current_host') as f:
                 main_domain = f.readline().rstrip()
             aliases = [
@@ -159,8 +160,8 @@ def user_create(username, firstname, lastname, mail, password):
                 with open('/etc/ssowat/conf.json.persistent') as json_conf:
                     ssowat_conf = json.loads(str(json_conf.read()))
 
-                if 'redirect_urls' in ssowat_conf and '/' in ssowat_conf['redirect_urls']:
-                    del ssowat_conf['redirect_urls']['/']
+                if 'redirected_urls' in ssowat_conf and '/' in ssowat_conf['redirected_urls']:
+                    del ssowat_conf['redirected_urls']['/']
 
                 with open('/etc/ssowat/conf.json.persistent', 'w+') as f:
                     json.dump(ssowat_conf, f, sort_keys=True, indent=4)
