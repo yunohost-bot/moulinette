@@ -117,7 +117,7 @@ def user_create(username, firstname, lastname, mail, password):
             uid = str(random.randint(200, 99999))
             uid_check = os.system("getent passwd " + uid)
             gid_check = os.system("getent group " + uid)
- 
+
         # Adapt values for LDAP
         fullname = firstname + ' ' + lastname
         rdn = 'uid=' + username + ',ou=users'
@@ -139,8 +139,33 @@ def user_create(username, firstname, lastname, mail, password):
             'uidNumber'     : uid,
             'homeDirectory' : '/home/' + username,
             'loginShell'    : '/bin/false'
- 
+
         }
+
+        # If it is the first user, add some aliases
+        if not yldap.search(base='ou=users,dc=yunohost,dc=org'):
+            with open('/etc/yunohost/current_host') as f:
+                main_domain = f.readline().rstrip()
+            aliases = [
+                'root@'+ main_domain,
+                'admin@'+ main_domain,
+                'webmaster@'+ main_domain,
+                'postmaster@'+ main_domain,
+            ]
+            attr_dict['mail'] = [ attr_dict['mail'] ] + aliases
+
+            # If exists, remove the redirection from the SSO
+            try:
+                with open('/etc/ssowat/conf.json.persistent') as json_conf:
+                    ssowat_conf = json.loads(str(json_conf.read()))
+
+                if 'redirect_urls' in ssowat_conf and '/' in ssowat_conf['redirect_urls']:
+                    del ssowat_conf['redirect_urls']['/']
+
+                with open('/etc/ssowat/conf.json.persistent', 'w+') as f:
+                    json.dump(ssowat_conf, f, sort_keys=True, indent=4)
+
+            except IOError: pass
 
         if yldap.add(rdn, attr_dict):
             # Update SFTP user group
