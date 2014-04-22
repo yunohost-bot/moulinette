@@ -256,7 +256,7 @@ def app_map(app=None, raw=False, user=None):
     return result
 
 
-def app_upgrade(app, url=None, file=None):
+def app_upgrade(app=None, url=None, file=None):
     """
     Upgrade app
 
@@ -275,7 +275,7 @@ def app_upgrade(app, url=None, file=None):
         upgraded_apps = []
 
         # If no app is specified, upgrade all apps
-        if not app:
+        if app is None:
             app = os.listdir(apps_setting_path)
         elif not isinstance(app, list):
             app = [ app ]
@@ -301,7 +301,8 @@ def app_upgrade(app, url=None, file=None):
             elif url:
                 manifest = _fetch_app_from_git(url)
             elif 'lastUpdate' not in new_app_dict or 'git' not in new_app_dict:
-                raise YunoHostError(22, app_id + _(" is a custom app, please provide an URL manually in order to upgrade it"))
+                #raise YunoHostError(22, app_id + _(" is a custom app, please provide an URL manually in order to upgrade it"))
+                continue
             elif (new_app_dict['lastUpdate'] > current_app_dict['lastUpdate']) \
                   or ('update_time' not in current_app_dict['settings'] \
                        and (new_app_dict['lastUpdate'] > current_app_dict['settings']['install_time'])) \

@@ -879,20 +879,17 @@ tools:
                     help: Ignore APT cache update and changelog
                     action: store_true
 
-        ### tools_changelog()
-        changelog:
-            action_help: YunoHost changelog
-            api: POST /changelog
-
         ### tools_upgrade()
         upgrade:
             action_help: YunoHost upgrade
-            api: POST /upgrade
-            
-        ### tools_upgradelog()
-        upgradelog:
-            action_help: Show dpkg log
-            api: POST /upgradelog
+            api: PUT /upgrade
+            arguments:
+                --ignore-apps:
+                    help: Ignore apps upgrade
+                    action: store_true
+                --ignore-packages:
+                    help: Ignore APT packages upgrade
+                    action: store_true
 
 
 #############################

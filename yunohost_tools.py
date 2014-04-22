@@ -36,7 +36,8 @@ from yunohost import YunoHostError, YunoHostLDAP, validate, colorize, get_requir
 from yunohost_domain import domain_add, domain_list
 from yunohost_dyndns import dyndns_subscribe
 from yunohost_backup import backup_init
-from yunohost_app import app_ssowatconf, app_fetchlist, app_info
+from yunohost_app import app_ssowatconf, app_fetchlist, app_info, app_upgrade
+from yunohost_service import service_log
 
 apps_setting_path= '/etc/yunohost/apps/'
 
@@ -343,50 +344,42 @@ def tools_update(ignore_apps=False, ignore_packages=False):
     return { 'packages': packages, 'apps': apps }
         
 
-def tools_changelog():
+def tools_upgrade(ignore_apps=False, ignore_packages=False):
     """
-    Show Changelog
+    Update apps & package cache, then display changelog
+
+    Keyword arguments:
+        ignore_apps -- Ignore apps upgrade
+        ignore_packages -- Ignore APT packages upgrade
 
     """
-    if os.path.isfile('/tmp/yunohost/update_status'):
-        with open('/tmp/yunohost/changelog', 'r') as f:
-            read_data = f.read()
-            return { "Changelog" : read_data.splitlines() }
-    else:
-        raise YunoHostError(17, _("Launch update before upgrade"))
+    if not ignore_packages:
+        cache = apt.Cache()
+        cache.open(None)
+        cache.upgrade(True)
         
+        # If API call
+        if not os.isatty(1):
+            critical_packages = ["yunohost-cli", "ssowat", "python", "nginx"]
+            for pkg in cache.get_changes():
+                if pkg.name in critical_packages:
+                    # Temporarily keep package ...
+                    pkg.mark_keep()
+                    # ... and set a hourly cron up to upgrade critical packages
+                    with open('/etc/cron.d/yunohost-upgrade', 'w+') as f:
+                        f.write('@hourly apt-get install '+ ' '.join(critical_packages) + ' -y && rm -f /etc/cron.d/yunohost-upgrade')
+        try:
+            # Apply APT changes
+            cache.commit(apt.progress.text.AcquireProgress(), apt.progress.base.InstallProgress())
+        except: pass
 
-def tools_upgrade():
-    """
-    Upgrade distribution
+    if not ignore_apps:
+        try:
+            app_upgrade()
+        except: pass
 
-    """
-    if os.path.isfile('/tmp/yunohost/upgrade.run'):
-        win_msg( _("Upgrade in progress"))
-    else:
-        if os.path.isfile('/tmp/yunohost/upgrade_status'):
-            with open('/tmp/yunohost/upgrade_status', 'r') as f:
-                read_data = f.read()
-                os.system('rm /tmp/yunohost/upgrade_status')
-                if read_data.strip() == "OK":
-                    win_msg( _("YunoHost has been successfully upgraded"))
-                else:
-                    raise YunoHostError(17, _("Error during upgrade"))
-        elif os.path.isfile('/tmp/yunohost/update_status'):
-            os.system('at now -f /usr/share/yunohost/upgrade')
-            win_msg( _("Upgrade in progress"))
-        else:
-            raise YunoHostError(17, _("Launch update before upgrade"))
-            
+    win_msg(_("System successfully upgraded"))
 
-def tools_upgradelog():
-    """
-    Show upgrade log
-
-    """
-    if os.path.isfile('/tmp/yunohost/upgrade.run'):
-        win_msg( _("Upgrade in progress"))
-    else:
-        with open('/tmp/yunohost/update_log', 'r') as f:
-            read_data = f.read()
-            return { "DPKG LOG" : read_data.splitlines() }
+    # Return API logs if it is an API call
+    if not os.isatty(1):
+        return { "log": service_log('yunohost-api', number="100").values()[0] }
