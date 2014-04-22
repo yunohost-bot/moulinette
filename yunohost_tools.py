@@ -299,6 +299,9 @@ def tools_update(ignore_apps=False, ignore_packages=False):
         if not cache.update():
             raise YunoHostError(1, _("An error occured during APT cache update"))
 
+        cache.open(None)
+        cache.upgrade(True)
+
         # Add changelogs to the result
         for pkg in cache.get_changes():
             result[pkg.name] = {
