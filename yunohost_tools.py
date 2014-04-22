@@ -28,16 +28,17 @@ import sys
 import yaml
 import re
 import getpass
-import subprocess
 import requests
 import json
-from subprocess import Popen, PIPE
+import apt
+import apt.progress
 from yunohost import YunoHostError, YunoHostLDAP, validate, colorize, get_required_args, win_msg
 from yunohost_domain import domain_add, domain_list
 from yunohost_dyndns import dyndns_subscribe
 from yunohost_backup import backup_init
-from yunohost_app import app_ssowatconf
+from yunohost_app import app_ssowatconf, app_fetchlist, app_info
 
+apps_setting_path= '/etc/yunohost/apps/'
 
 def tools_ldapinit(password=None):
     """
@@ -281,19 +282,60 @@ def tools_postinstall(domain, password, dyndns=False):
     win_msg(_("YunoHost has been successfully configured"))
 
 
-def tools_update():
+def tools_update(ignore_apps=False, ignore_packages=False):
     """
-    Update distribution
+    Update apps & package cache, then display changelog
+
+    Keyword arguments:
+        ignore_apps -- Ignore app list update and changelog
+        ignore_packages -- Ignore apt cache update and changelog
 
     """
-    process = Popen("/usr/bin/checkupdate", stdout=PIPE)
-    stdout, stderr = process.communicate()
-    if process.returncode == 1:
-        win_msg( _("Not upgrade found"))
-    elif process.returncode == 2:
-        raise YunoHostError(17, _("Error during update"))
-    else:
-        return { "Update" : stdout.splitlines() }
+    result = {}
+
+    if not ignore_packages:
+        cache = apt.Cache()
+        # Update APT cache
+        if not cache.update():
+            raise YunoHostError(1, _("An error occured during APT cache update"))
+
+        # Add changelogs to the result
+        for pkg in cache.get_changes():
+            result[pkg.name] = {
+                'fullname': pkg.fullname,
+                'changelog': pkg.get_changelog()
+            }
+        
+    if not ignore_apps:
+        app_fetchlist()
+        app_list = os.listdir(apps_setting_path)
+        if len(app_list) > 0:
+            for app_id in app_list:
+                if '__' in app_id:
+                    original_app_id = app_id[:app_id.index('__')]
+                else:
+                    original_app_id = app_id
+
+                current_app_dict = app_info(app_id,  raw=True)
+                new_app_dict     = app_info(original_app_id, raw=True)
+
+                # Custom app
+                if 'lastUpdate' not in new_app_dict or 'git' not in new_app_dict:
+                    continue
+
+                if (new_app_dict['lastUpdate'] > current_app_dict['lastUpdate']) \
+                      or ('update_time' not in current_app_dict['settings'] \
+                           and (new_app_dict['lastUpdate'] > current_app_dict['settings']['install_time'])) \
+                      or ('update_time' in current_app_dict['settings'] \
+                           and (new_app_dict['lastUpdate'] > current_app_dict['settings']['update_time'])):
+                    result[app_id] = {
+                        'fullname': current_app_dict['settings']['label']
+                    }
+    
+    if len(result) == 0:
+        win_msg(_("There is nothing to upgrade right now"))
+
+    return result
         
 
 def tools_changelog():

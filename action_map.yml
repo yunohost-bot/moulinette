@@ -870,7 +870,14 @@ tools:
         ### tools_update()
         update:
             action_help: YunoHost update
-            api: POST /update
+            api: PUT /update
+            arguments:
+                --ignore-apps:
+                    help: Ignore apps cache update and changelog
+                    action: store_true
+                --ignore-packages:
+                    help: Ignore APT cache update and changelog
+                    action: store_true
 
         ### tools_changelog()
         changelog:
