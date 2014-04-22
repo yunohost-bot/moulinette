@@ -291,8 +291,8 @@ def tools_update(ignore_apps=False, ignore_packages=False):
         ignore_packages -- Ignore apt cache update and changelog
 
     """
+    packages = []
     if not ignore_packages:
-        packages = []
         cache = apt.Cache()
         # Update APT cache
         if not cache.update():
@@ -309,8 +309,8 @@ def tools_update(ignore_apps=False, ignore_packages=False):
                 'changelog': pkg.get_changelog()
             })
         
+    apps = []
     if not ignore_apps:
-        apps = []
         app_fetchlist()
         app_list = os.listdir(apps_setting_path)
         if len(app_list) > 0:
