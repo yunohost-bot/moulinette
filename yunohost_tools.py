@@ -367,7 +367,7 @@ def tools_upgrade(ignore_apps=False, ignore_packages=False):
                     pkg.mark_keep()
                     # ... and set a hourly cron up to upgrade critical packages
                     with open('/etc/cron.d/yunohost-upgrade', 'w+') as f:
-                        f.write('@hourly apt-get install '+ ' '.join(critical_packages) + ' -y && rm -f /etc/cron.d/yunohost-upgrade')
+                        f.write('00 * * * * root PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin apt-get install '+ ' '.join(critical_packages) + ' -y && rm -f /etc/cron.d/yunohost-upgrade')
         try:
             # Apply APT changes
             cache.commit(apt.progress.text.AcquireProgress(), apt.progress.base.InstallProgress())
