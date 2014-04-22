@@ -294,6 +294,7 @@ def tools_update(ignore_apps=False, ignore_packages=False):
     result = {}
 
     if not ignore_packages:
+        result['packages'] = []
         cache = apt.Cache()
         # Update APT cache
         if not cache.update():
@@ -304,12 +305,17 @@ def tools_update(ignore_apps=False, ignore_packages=False):
 
         # Add changelogs to the result
         for pkg in cache.get_changes():
-            result[pkg.name] = {
+            result['packages'].append({
+                'name': pkg.name,
                 'fullname': pkg.fullname,
                 'changelog': pkg.get_changelog()
-            }
+            })
+
+        if len(result['packages']) == 0:
+            del result['packages']
         
     if not ignore_apps:
+        result['apps'] = []
         app_fetchlist()
         app_list = os.listdir(apps_setting_path)
         if len(app_list) > 0:
@@ -331,9 +337,12 @@ def tools_update(ignore_apps=False, ignore_packages=False):
                            and (new_app_dict['lastUpdate'] > current_app_dict['settings']['install_time'])) \
                       or ('update_time' in current_app_dict['settings'] \
                            and (new_app_dict['lastUpdate'] > current_app_dict['settings']['update_time'])):
-                    result[app_id] = {
-                        'fullname': current_app_dict['settings']['label']
-                    }
+                    result['apps'].append({
+                        'id': app_id,
+                        'label': current_app_dict['settings']['label']
+                    })
+        if len(result['apps']) == 0:
+            del result['apps']
     
     if len(result) == 0:
         win_msg(_("There is nothing to upgrade right now"))
